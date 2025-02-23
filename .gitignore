@@ -1,0 +1,20 @@
+# Terraform state ファイル（機密情報を含む）
+*.tfstate
+*.tfstate.backup
+
+# Terraform のロックファイル
+.terraform.lock.hcl
+
+# Terraform プロジェクトの一時ファイル
+.terraform/
+crash.log
+override.tf
+override.tf.json
+*.tfvars
+*.tfvars.json
+
+# Terraform Plan の出力ファイル（不要な場合）
+*.tfplan
+
+# VS Code 用の設定（Terraform拡張機能の一時ファイル）
+.vscode/
