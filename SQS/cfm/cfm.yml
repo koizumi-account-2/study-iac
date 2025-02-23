@@ -1,0 +1,9 @@
+Resources:
+  Queue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: MyQueue
+      MaximumMessageSize: 2048
+      Tags:
+        - Key: Name
+          Value: test-queue-cfn
