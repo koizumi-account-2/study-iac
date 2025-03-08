@@ -39,6 +39,37 @@ export class EcsFlaskApiStack extends cdk.Stack {
         enableFargateCapacityProviders: true,
         vpc,
     });
+
+    // ALB用のセキュリティグループを作成
+    const albSecurityGroup = new ec2.SecurityGroup(this, 'EcsFlaskApiAlbSecurityGroup', {
+        vpc,
+        allowAllOutbound: true,
+        securityGroupName: `${props.stage}-${SUFFIX}-alb-security-group`
+    });
+     // ECSFargateインスタンス用のセキュリティグループを作成
+    const ecsSecurityGroup = new ec2.SecurityGroup(this, 'EcsFargateSecurityGroup', {
+        vpc,
+        allowAllOutbound: false,
+        securityGroupName: `${props.stage}-${SUFFIX}-fargate-security-group`
+    });
+
+    // ALBのインバウンドルールを設定 
+    // 任意のIPから80番ポートへのアクセスを許可
+    albSecurityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(80));
+
+    // ALBのアウトバウンドルールを設定
+    // ECS Fargateインスタンスの5000番ポートへのアクセスを許可
+    albSecurityGroup.addEgressRule(ecsSecurityGroup, ec2.Port.tcp(5000));
+
+
+    // Fargateインスタンスのインバウンドルールを設定
+    // ALBから5000番ポートへのアクセスを許可  
+    ecsSecurityGroup.addIngressRule(albSecurityGroup, ec2.Port.tcp(5000));  
+
+    // Fargateインスタンスのアウトバウンドルールを設定
+    // 任意のIPアドレスの443番ポートへのアクセスを許可
+    ecsSecurityGroup.addEgressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(443));
+
     
     // ALB を作成
     const alb = new elbv2.ApplicationLoadBalancer(this, 'EcsFlaskApiAlb', {
@@ -73,6 +104,7 @@ export class EcsFlaskApiStack extends cdk.Stack {
         protocol: elbv2.ApplicationProtocol.HTTP,
         defaultAction: elbv2.ListenerAction.forward([targetGroup]),
     });
+
 
 
     // ECSタスク実行ロールを作成
