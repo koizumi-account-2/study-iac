@@ -6,6 +6,7 @@ import * as ecr from 'aws-cdk-lib/aws-ecr';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as logs from 'aws-cdk-lib/aws-logs';
+import * as iam from 'aws-cdk-lib/aws-iam';
 
 const ECS_FLASK_API_SECRET_NAME = 'EcsFlaskApiSecret';
 const ECS_FLASK_API_REPOSITORY_NAME = 'EcsFlaskApiRepository';
@@ -73,11 +74,30 @@ export class EcsFlaskApiStack extends cdk.Stack {
         defaultAction: elbv2.ListenerAction.forward([targetGroup]),
     });
 
+
+    // ECSタスク実行ロールを作成
+    const executionRole = new iam.Role(this, 'EcsFlaskApiExecutionRole', {
+        assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
+        roleName: `${props.stage}-${SUFFIX}-execution-role`,
+    });
+
+    executionRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEC2ContainerServiceFullAccess'));
+    
+    // シークレットの読み取り権限を追加
+    secrets.grantRead(executionRole);
+
+    // ECSタスクロールを作成
+    const taskRole = new iam.Role(this, 'EcsFlaskApiTaskRole', {
+        assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
+        roleName: `${props.stage}-${SUFFIX}-task-role`,
+    });
     // ECS タスク定義を作成
     const taskDefinition = new ecs.FargateTaskDefinition(this, 'EcsFlaskApiTaskDefinition', {
       family: `${props.stage}-${SUFFIX}`,
       cpu: 256,
       memoryLimitMiB: 512,
+      executionRole,
+      taskRole
     });
 
     // ECSタスクのロググループの作成
@@ -106,7 +126,6 @@ export class EcsFlaskApiStack extends cdk.Stack {
         streamPrefix: 'flask-api',
       }),
     });
-
 
     // ECSサービスを作成
     const service = new ecs.FargateService(this, 'EcsFlaskApiService', {
